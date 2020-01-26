@@ -1,5 +1,40 @@
 # go-kube-api (example service)
 
+The service exposes an HTTP server and currently only works with an in-cluster config.
+
+### Endpoints
+
+#### POST /v1/rbac/enumerateBySubjectNames
+
+Allows listing a namespace's RoleBindings based on their subject names either by exact value or a regular expression.
+
+The endpoint requires a a `namespace` and one or more `subjectNames` either as alphanumeric strings (exact match)
+or regular expressions which can be provided either as json or yaml depending on the `Content-Type` header.
+The response will match the type of the request.
+
+`Content-Type: application/json`
+
+```json
+{
+  "namespace": "default",
+  "subjectNames": [
+    "subject1",
+    "subject2",
+    "subject[3,4]"
+  ]
+}
+```
+
+`Content-Type: application/x-yaml`
+
+```yaml
+namespace: default
+subjectNames:
+- subject1
+- subject2
+- subject[3,4]
+```
+
 ## Building the binary
 
 * Run `make build`. Service binary will be `./bin/go-kube-api`.
