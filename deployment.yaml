@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: go-kube-api-serviceaccount
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: list-role-bindings
+rules:
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - rolebindings
+  verbs:
+  - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: go-kube-api-to-list-role-bindings
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: list-role-bindings
+subjects:
+  - kind: ServiceAccount
+    name: go-kube-api-serviceaccount
+    namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-kube-api
+  labels:
+    app: go-kube-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-kube-api
+  template:
+    metadata:
+      labels:
+        app: go-kube-api
+    spec:
+      serviceAccountName: go-kube-api-serviceaccount
+      containers:
+      - name: go-kube-api
+        image: go-kube-api:dev
+        ports:
+        - containerPort: 8080
+        env:
+        - name: BIND_ADDRESS
+          value: 0.0.0.0:8080
+        - name: GIN_MODE
+          value: release
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: 8080
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: 8080
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-kube-api
+spec:
+  selector:
+    app: go-kube-api
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
