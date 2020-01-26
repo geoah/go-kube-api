@@ -293,3 +293,63 @@ func TestAPI_RbacEnummerateByBindings(t *testing.T) {
 	}
 }
 
+func TestAPI_Health(t *testing.T) {
+	type fields struct {
+		rbac func(t *testing.T) rbac.Enumerator
+	}
+	tests := []struct {
+		name     string
+		fields   fields
+		testResp func(t *testing.T, rr *httptest.ResponseRecorder)
+	}{
+		{
+			name: "success",
+			fields: fields{
+				rbac: func(t *testing.T) rbac.Enumerator {
+					ctrl := gomock.NewController(t)
+					mockEnumerator := rbacmocks.NewMockEnumerator(ctrl)
+					mockEnumerator.EXPECT().EnumberateByRoleBindings(
+						"",
+						gomock.Any(),
+					).Return([]v1.RoleBinding{}, nil)
+					return mockEnumerator
+				},
+			},
+			testResp: func(t *testing.T, rr *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, rr.Code)
+			},
+		},
+		{
+			name: "failure",
+			fields: fields{
+				rbac: func(t *testing.T) rbac.Enumerator {
+					ctrl := gomock.NewController(t)
+					mockEnumerator := rbacmocks.NewMockEnumerator(ctrl)
+					mockEnumerator.EXPECT().EnumberateByRoleBindings(
+						"",
+						gomock.Any(),
+					).Return(nil, errors.New("some error"))
+					return mockEnumerator
+				},
+			},
+			testResp: func(t *testing.T, rr *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusInternalServerError, rr.Code)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rbacMock := tt.fields.rbac(t)
+			api, err := New(rbacMock)
+			require.NoError(t, err, "failed to create new api")
+
+			r := gin.Default()
+			r.GET("/", api.Health)
+
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", "/", nil)
+			r.ServeHTTP(w, req)
+			tt.testResp(t, w)
+		})
+	}
+}

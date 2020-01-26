@@ -34,6 +34,18 @@ func New(rbac rbac.Enumerator) (*API, error) {
 	}, nil
 }
 
+// Health handles liveness and health requests by querying the rbac enumerator
+// and expecting no error
+func (api API) Health(c *gin.Context) {
+	filter := rbac.FilterBySubjectName("something-that-probably-does-not-exist")
+	_, err := api.rbac.EnumberateByRoleBindings("", filter)
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	c.String(http.StatusOK, "OK")
+}
+
 // RbacEnummerateByBindings handles requests to enumerate role bindings filtered
 // by subject names
 func (api API) RbacEnummerateByBindings(c *gin.Context) {
